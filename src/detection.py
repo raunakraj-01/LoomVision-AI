@@ -53,14 +53,19 @@ class DefectDetector:
                 
         return has_defect, defect_info, annotated
 
-    def detect_pattern_defect(self, preprocessed_frame, reference_gray_frame, original_frame):
+    def detect_defect_via_template(self, preprocessed_frame, template_gray_patch, original_frame, threshold=0.7):
         """
-        Detects color or pattern mismatches by comparing the current frame to a 'golden' reference.
+        Uses OpenCV's cv2.matchTemplate Algorithm.
+        
+        It slides a small 'perfect' weaving template over the frame. 
+        If the highest match score drops below the threshold, it means the 
+        standard fabric pattern is broken, missing, or mismatched.
         
         Args:
-            preprocessed_frame: The current grayscaled/blurred image
-            reference_gray_frame: The perfect grayscaled reference image
-            original_frame: The original BGR image for annotations.
+            preprocessed_frame: The current grayscaled camera image.
+            template_gray_patch: A small cropped template of "perfect" pattern.
+            original_frame: The BGR frame for annotations.
+            threshold: Minimum acceptable match percentage (0.0 to 1.0).
             
         Returns:
             has_defect (bool)
@@ -71,32 +76,29 @@ class DefectDetector:
         defect_info = None
         annotated = original_frame.copy()
         
-        # Ensure sizes match
-        if preprocessed_frame.shape != reference_gray_frame.shape:
-            # Resize preprocessed to match reference if cameras differ
-            preprocessed_frame = cv2.resize(preprocessed_frame, (reference_gray_frame.shape[1], reference_gray_frame.shape[0]))
+        # 1. Run the Template Matching algorithm
+        # TM_CCOEFF_NORMED returns a grid of scores from -1.0 to 1.0
+        res = cv2.matchTemplate(preprocessed_frame, template_gray_patch, cv2.TM_CCOEFF_NORMED)
+        
+        # 2. Extract the highest matching score and its location (and lowest)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        
+        # 3. Defect Logic:
+        # If the BEST match on the screen is still lower than the required threshold,
+        # it means the camera cannot find the perfect pattern anywhere (e.g. an anomaly took over)
+        if max_val < threshold:
+            has_defect = True
+            defect_info = f"Template Mismatch (Max Match: {max_val*100:.1f}%)"
             
-        # 1. Compute absolute difference between current frame and perfect reference
-        diff = cv2.absdiff(reference_gray_frame, preprocessed_frame)
-        
-        # 2. Threshold the difference (pixels that differ by more than 30 intensity)
-        _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
-        
-        # 3. Dilate and find contours of the differences
-        kernel = np.ones((5,5), np.uint8)
-        dilated = cv2.dilate(thresh, kernel, iterations=2)
-        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            if area > self.contour_area_threshold * 2: # Require a slightly larger area for pattern mismatch
-                has_defect = True
-                defect_info = "Pattern/Color Mismatch"
-                
-                # Draw yellow bounding rectangle around the discrepancy
-                x, y, w, h = cv2.boundingRect(contour)
-                cv2.rectangle(annotated, (x, y), (x+w, y+h), (0, 255, 255), 3) # Yellow box
-                cv2.putText(annotated, f"WARNING: {defect_info}", (x, max(y-10, 20)), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            # Since the pattern is broken, let's draw a box around the WORST matching area
+            # where the defect most likely is physically located.
+            h, w = template_gray_patch.shape
+            top_left = min_loc  # min_loc is the coordinate of the worst match!
+            bottom_right = (top_left[0] + w, top_left[1] + h)
+            
+            # Draw an Orange bounding box indicating a Template Failure
+            cv2.rectangle(annotated, top_left, bottom_right, (0, 165, 255), 3) 
+            cv2.putText(annotated, f"WARNING: {defect_info}", (max(top_left[0], 0), max(top_left[1]-10, 20)), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
                             
         return has_defect, defect_info, annotated

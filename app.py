@@ -64,7 +64,36 @@ with col1:
     # AI Engine Toggle
     mode = st.radio("⚙️ Select Processing Engine:", ("OpenCV (Mathematical)", "YOLOv8 (Deep Learning)"), horizontal=True)
     
-    run_camera = st.checkbox("Start Production Line Feed", value=False)
+    # Template Capture System
+    st.markdown("---")
+    st.markdown("**Setup Phase:** Focus camera on a PERFECT section of cloth.")
+    col_btn1, col_btn2 = st.columns([1,1])
+    with col_btn1:
+        if st.button("📸 Capture Golden Pattern"):
+            cam = CameraController(0)
+            if cam.initialize():
+                ret, frame = cam.get_frame()
+                if ret:
+                    # Crop a center piece to use as the "Perfect Template"
+                    h, w = frame.shape[:2]
+                    crop_size = 100
+                    center_y, center_x = h // 2, w // 2
+                    patch = frame[center_y-crop_size:center_y+crop_size, center_x-crop_size:center_x+crop_size]
+                    
+                    # Store grayscale version in session state for the runtime to use
+                    st.session_state.golden_template = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
+                    st.success("Golden Pattern Memorized!")
+                cam.release()
+                
+    with col_btn2:
+        if 'golden_template' in st.session_state:
+            st.image(st.session_state.golden_template, caption="Memorized Perfect Pattern", width=100)
+        else:
+            st.info("No pattern memorized yet.")
+            
+    st.markdown("---")
+    
+    run_camera = st.checkbox("▶️ Start Production Line Feed", value=False)
     FRAME_WINDOW = st.image([])
 
 with col2:
@@ -97,17 +126,48 @@ if run_camera:
                 st.error("Failed to fetch camera feed.")
                 break
             
+            has_defect = False
+            defect_info = None
+            annotated_frame = frame.copy()
+            
             # --- 1. Processing Pipeline ---
             if mode == "OpenCV (Mathematical)":
                 preprocessed = apply_preprocessing(frame)
-                has_defect, defect_info, annotated_frame = st.session_state.detector.detect_structural_defect(preprocessed, frame)
+                
+                # Check A: Massive Structural Holes (Edge Detection)
+                has_struc_defect, struc_info, ann_frame_1 = st.session_state.detector.detect_structural_defect(preprocessed, frame)
+                
+                # Check B: Pattern Mismatch (Template Matching) 
+                has_pat_defect = False
+                if 'golden_template' in st.session_state:
+                     has_pat_defect, pat_info, ann_frame_2 = st.session_state.detector.detect_defect_via_template(
+                         preprocessed, st.session_state.golden_template, frame, threshold=0.6)
+                
+                # Consolidate results
+                if has_struc_defect:
+                    has_defect = True
+                    defect_info = struc_info
+                    annotated_frame = ann_frame_1
+                elif 'golden_template' in st.session_state and has_pat_defect:
+                    has_defect = True
+                    defect_info = pat_info
+                    annotated_frame = ann_frame_2
+
             else:
+                # Deep Learning YOLO Pipeline
                 has_defect, defect_info, annotated_frame = st.session_state.ml_detector.detect_defects(frame)
             
-            # --- 2. Logging ---
+            # --- 2. Logging & Alarm ---
             if has_defect:
                 st.session_state.db_logger.log_defect(defect_info, annotated_frame)
                 status_placeholder.error(f"🚨 ALERT: {defect_info} detected!")
+                # Javascript Audio Alarm for Weaver (Beep sound!)
+                html_string = """
+                    <audio autoplay>
+                      <source src="https://www.soundjay.com/buttons/sounds/beep-01a.mp3" type="audio/mpeg">
+                    </audio>
+                    """
+                st.components.v1.html(html_string, width=0, height=0)
                 
             # --- 4. Display ---
             # Convert BGR (OpenCV) to RGB (Streamlit/PIL)
