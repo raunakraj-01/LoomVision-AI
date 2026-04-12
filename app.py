@@ -9,6 +9,7 @@ from src.camera import CameraController
 from src.preprocessing import apply_preprocessing
 from src.detection import DefectDetector
 from src.database import DatabaseLogger
+from src.ml_detection import MLDetector
 
 # Set up page configurations
 st.set_page_config(page_title="LoomVision AI", page_icon="👁️", layout="wide")
@@ -50,11 +51,19 @@ st.divider()
 if 'detector' not in st.session_state:
     st.session_state.detector = DefectDetector(contour_area_threshold=800)
     st.session_state.db_logger = DatabaseLogger()
+    try:
+        st.session_state.ml_detector = MLDetector()
+    except Exception as e:
+        st.error(f"Failed to load ML Model: {e}")
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("Live Camera Feed")
+    
+    # AI Engine Toggle
+    mode = st.radio("⚙️ Select Processing Engine:", ("OpenCV (Mathematical)", "YOLOv8 (Deep Learning)"), horizontal=True)
+    
     run_camera = st.checkbox("Start Production Line Feed", value=False)
     FRAME_WINDOW = st.image([])
 
@@ -88,13 +97,14 @@ if run_camera:
                 st.error("Failed to fetch camera feed.")
                 break
             
-            # --- 1. Preprocessing ---
-            preprocessed = apply_preprocessing(frame)
+            # --- 1. Processing Pipeline ---
+            if mode == "OpenCV (Mathematical)":
+                preprocessed = apply_preprocessing(frame)
+                has_defect, defect_info, annotated_frame = st.session_state.detector.detect_structural_defect(preprocessed, frame)
+            else:
+                has_defect, defect_info, annotated_frame = st.session_state.ml_detector.detect_defects(frame)
             
-            # --- 2. Detection ---
-            has_defect, defect_info, annotated_frame = st.session_state.detector.detect_structural_defect(preprocessed, frame)
-            
-            # --- 3. Logging ---
+            # --- 2. Logging ---
             if has_defect:
                 st.session_state.db_logger.log_defect(defect_info, annotated_frame)
                 status_placeholder.error(f"🚨 ALERT: {defect_info} detected!")
