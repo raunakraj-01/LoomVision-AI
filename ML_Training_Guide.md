@@ -1,48 +1,70 @@
-# LoomVision AI: Machine Learning Training Guide
+# LoomVision AI: Kaggle to Colab Training Guide
 
-Currently, your system is using the **"yolov8n.pt" pre-trained model**. This is a powerful, generalized Machine Learning model that detects common objects (cellphones, cups, people). 
-While this is great for proving the logic pipeline works without crashing, it has *not* been taught what "Fabric Defects" look like yet!
+Since you found a dataset on Kaggle, the fastest way to train your model is to connect Google Colab directly to Kaggle. That way, you don't even have to download the huge dataset to your laptop!
 
-To achieve a true **A+ College Project / Real-World Demo**, you must fine-tune (train) your own YOLOv8 model and drop it into your project folder. Here is the step-by-step roadmap to doing that for free.
+Follow this exact step-by-step guide to train your model.
 
-## Phase 1: Source a Dataset
-You need images of fabric. Half should be perfect, half should be defective.
-1. Create a free account on [Roboflow.com](https://roboflow.com/) or browse [Kaggle](https://www.kaggle.com/datasets/belkhirnacif/telecom-paristech-mri-fabric-defect-dataset).
-2. Search for "Fabric Defect Dataset YOLO format". 
-3. Download the dataset. It should contain a folder of images, and a folder of `.txt` label files (which contain the coordinates of where the defect is).
+## Step 1: Get your Kaggle API Token
+To let Google Colab download your dataset from Kaggle automatically:
+1. Go to [Kaggle.com](https://kaggle.com) and log in.
+2. Click your profile picture (top right) -> **Settings**.
+3. Scroll down to the **API** section and click **"Create New Token"**.
+4. This will download a file named `kaggle.json`. Keep this file handy!
 
-## Phase 2: Train the Model (Google Colab)
-Since YOLO training requires a GPU, do not run this on your laptop. Use Google Colab (free).
-1. Go to Google Colab and open a new Notebook.
-2. Ensure you change your Runtime Type to **T4 GPU**.
-3. Run the following code blocks in the notebook:
+## Step 2: Set up Google Colab
+1. Open [Google Colab](https://colab.research.google.com/) and create a "New Notebook".
+2. Click **Runtime** (top menu) -> **Change runtime type**.
+3. Set Hardware Accelerator to **T4 GPU** and hit Save.
 
+## Step 3: Run the Training Code
+Copy and paste the following Python code blocks into your Colab notebook cells and run them one by one.
+
+### Cell 1: Upload your Kaggle Key
 ```python
-# Block 1: Install Ultralytics
-!pip install ultralytics
+from google.colab import files
+# When you run this cell, it will ask you to upload a file. 
+# Upload the kaggle.json file you downloaded in Step 1!
+files.upload() 
 
-# Block 2: Run the Training Command
-from ultralytics import YOLO
-
-# Load the base model
-model = YOLO('yolov8n.pt') 
-
-# Train the model (Upload your data.yaml from Roboflow here)
-# Epochs = 50 means it will review the materials 50 times to learn.
-results = model.train(data='your_dataset/data.yaml', epochs=50, imgsz=640)
+# This creates a hidden kaggle folder and moves your key inside it securely
+!mkdir -p ~/.kaggle
+!cp kaggle.json ~/.kaggle/
+!chmod 600 ~/.kaggle/kaggle.json
 ```
 
-## Phase 3: Export & Inject
-1. Once Colab finishes training, it will generate a file named **`best.pt`**.
-2. Download `best.pt` onto your Mac.
-3. Move `best.pt` into your `LoomVisionAI/models/` directory.
-4. Open `/src/ml_detection.py` and change line 11:
-   ```python
-   # Change this:
-   self.model = YOLO("models/yolov8n.pt")
-   
-   # To this:
-   self.model = YOLO("models/best.pt")
-   ```
+### Cell 2: Download your Dataset directly from Kaggle
+*Go to your Kaggle Dataset URL. Click the three dots next to the "Download" button on the dataset page and click "Copy API Command". It will look like `kaggle datasets download -d username/dataset-name`. Paste it below!*
 
-Restart your Streamlit dashboard and you are officially running a custom-trained Fabric Defect Deep Learning application!
+```python
+# Replace this string with YOUR exact Kaggle command
+!kaggle datasets download -d USERNAME/YOUR-DATASET-NAME
+
+# Unzip the downloaded dataset folder
+!unzip -q YOUR-DATASET-NAME.zip -d dataset/
+```
+
+### Cell 3: Install Ultralytics (YOLO)
+```python
+!pip install ultralytics
+```
+
+### Cell 4: Train the Machine Learning Model!
+*(Note: Check inside your newly unzipped `dataset` folder in Colab. Look for a file called `data.yaml` or something similar, and update the string below!)*
+
+```python
+from ultralytics import YOLO
+
+# Load the base "Nano" model
+model = YOLO('yolov8n.pt') 
+
+# Train the model on your Kaggle dataset!
+# epochs=30 means it runs through the data 30 times. Increase to 50 if the accuracy is too low.
+results = model.train(data='/content/dataset/data.yaml', epochs=30, imgsz=640)
+```
+
+## Step 4: Export your Trophy
+1. Once Cell 4 finishes running (it might take 20-30 minutes), it will automatically save your trained model as `best.pt`. 
+2. Colab will show you the exact folder path where it saved it (usually inside `/runs/detect/train/weights/best.pt`). 
+3. Click the Folder icon on the far left side of Colab, navigate to that path, right-click `best.pt`, and click **Download**.
+4. Move `best.pt` into your computer's `LoomVisionAI/models/` folder.
+5. In your `app.py` or `ml_detection.py`, change `yolov8n.pt` to `best.pt`. Done!
