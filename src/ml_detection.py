@@ -7,16 +7,18 @@ class MLDetector:
     Core engine for detecting defects using Deep Learning.
     Wraps the Ultralytics YOLOv8 architecture for real-time inference.
     """
-    def __init__(self, model_path="models/yolov8n.pt"):
+    def __init__(self, model_path="models/best.pt"):
         """
-        Loads the YOLOv8 model. 
-        If the 'yolov8n.pt' file doesn't exist, ultralytics will auto-download
-        the base pre-trained nano model on the very first run.
+        Loads the Custom Trained YOLOv8 model for Fabric Defect Detection.
         """
         # Ensure the models directory exists
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        print(f"[Info] Loading AI Model from {model_path}...")
-        self.model = YOLO(model_path)
+        print(f"[Info] Loading Custom AI Model from {model_path}...")
+        try:
+            self.model = YOLO(model_path)
+        except Exception as e:
+            print(f"[Warning] Could not load {model_path}. Falling back to default.")
+            self.model = YOLO("models/yolov8n.pt")
     
     def detect_defects(self, frame):
         """
