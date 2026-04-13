@@ -99,6 +99,7 @@ with col1:
 with col2:
     st.subheader("System Status")
     status_placeholder = st.empty()
+    audio_placeholder = st.empty()
     st.divider()
     st.subheader("Defect Logs")
     logs_placeholder = st.empty()
@@ -162,12 +163,15 @@ if run_camera:
                 st.session_state.db_logger.log_defect(defect_info, annotated_frame)
                 status_placeholder.error(f"🚨 ALERT: {defect_info} detected!")
                 # Javascript Audio Alarm for Weaver (Beep sound!)
-                html_string = """
+                audio_placeholder.markdown(
+                    """
                     <audio autoplay>
                       <source src="https://www.soundjay.com/buttons/sounds/beep-01a.mp3" type="audio/mpeg">
                     </audio>
-                    """
-                st.components.v1.html(html_string, width=0, height=0)
+                    """, unsafe_allow_html=True
+                )
+            else:
+                audio_placeholder.empty()
                 
             # --- 4. Display ---
             # Convert BGR (OpenCV) to RGB (Streamlit/PIL)
