@@ -1,7 +1,7 @@
 {
   "name": "loomvisionai",
   "version": "1.0.0",
-  "description": "**Team TriNetra Vision**",
+  "description": "LoomVision AI Frontend",
   "main": "index.js",
   "directories": {
     "test": "tests"

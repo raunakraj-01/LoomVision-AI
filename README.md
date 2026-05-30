@@ -1,6 +1,6 @@
 # LoomVision AI: Real-Time Fabric Defect Detection using Deep Learning & Computer Vision
 
-**TriNetra Vision**
+
 
 ## Project Overview
 LoomVision AI is a real-time system that captures live fabric images directly from a mobile phone camera and detects manufacturing defects such as broken threads, loose weaves, and stains. Built primarily for handloom workers, it features a split-cloud architecture with a lightweight **Vercel Frontend** and a heavy deep-learning **Flask/Render Backend**.
