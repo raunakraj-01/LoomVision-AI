@@ -13,5 +13,5 @@ flask
 flask-socketio
 flask-cors
 eventlet
-gunicorn
+gunicorn==21.2.0
 reportlab
