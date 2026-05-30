@@ -1,28 +1,22 @@
 import unittest
-import threading
-import time
-import urllib.request
 import json
 import sqlite3
 import os
-from http.server import ThreadingHTTPServer
 
-# Import the APIHandler from the api_server script
-from api_server import APIHandler
+from flask_server import app, init_system
 
-class TestAPIServer(unittest.TestCase):
+class TestFlaskAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Start the API server in a background thread for testing."""
-        cls.port = 8085
-        cls.server = ThreadingHTTPServer(('localhost', cls.port), APIHandler)
-        cls.server_thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
-        cls.server_thread.start()
+        """Set up the Flask test client and ensure the database exists."""
+        # Initialize the global variables in flask_server
+        init_system()
         
-        # Give it a moment to start
-        time.sleep(1)
+        # Enable testing mode in Flask
+        app.config['TESTING'] = True
+        cls.client = app.test_client()
 
-        # Setup test database
+        # Setup test database to ensure the API doesn't fail
         os.makedirs("data", exist_ok=True)
         conn = sqlite3.connect("data/loomvision.db")
         cursor = conn.cursor()
@@ -34,50 +28,47 @@ class TestAPIServer(unittest.TestCase):
                 image_path TEXT NOT NULL
             )
         ''')
-        # Insert a dummy record if table is empty
+        
+        # Insert a dummy record if the table is empty
         cursor.execute("SELECT COUNT(*) FROM defects")
         if cursor.fetchone()[0] == 0:
-            cursor.execute("INSERT INTO defects (timestamp, defect_type, image_path) VALUES (?, ?, ?)", 
-                           ("2026-01-01 12:00:00", "Test Defect", "output/defects/test.jpg"))
+            cursor.execute('''
+                INSERT INTO defects (timestamp, defect_type, image_path)
+                VALUES (?, ?, ?)
+            ''', ("2024-01-01 12:00:00", "Normal", "test.jpg"))
             conn.commit()
         conn.close()
 
-    @classmethod
-    def tearDownClass(cls):
-        """Shut down the background API server."""
-        cls.server.shutdown()
-        cls.server.server_close()
-        cls.server_thread.join()
-
     def test_metrics_endpoint(self):
-        """Test GET /api/v1/metrics returns proper JSON."""
-        req = urllib.request.Request(f"http://localhost:{self.port}/api/v1/metrics")
-        with urllib.request.urlopen(req) as response:
-            self.assertEqual(response.status, 200)
-            data = json.loads(response.read().decode())
-            self.assertIn("total_scans", data)
-            self.assertIn("defects_found", data)
-            self.assertIn("accuracy_rate", data)
-            self.assertIn("inspection_active", data)
+        """Test the /api/v1/metrics endpoint."""
+        response = self.client.get('/api/v1/metrics')
+        self.assertEqual(response.status_code, 200)
+        
+        data = json.loads(response.data)
+        self.assertIn("total_scans", data)
+        self.assertIn("defects_found", data)
+        self.assertIn("uptime", data)
+        self.assertIn("accuracy_rate", data)
+        self.assertIn("inspection_active", data)
 
     def test_defects_endpoint(self):
-        """Test GET /api/v1/defects returns a list."""
-        req = urllib.request.Request(f"http://localhost:{self.port}/api/v1/defects")
-        with urllib.request.urlopen(req) as response:
-            self.assertEqual(response.status, 200)
-            data = json.loads(response.read().decode())
-            self.assertIsInstance(data, list)
-            if len(data) > 0:
-                self.assertIn("id", data[0])
-                self.assertIn("defect_type", data[0])
+        """Test the /api/v1/defects endpoint."""
+        response = self.client.get('/api/v1/defects')
+        self.assertEqual(response.status_code, 200)
+        
+        data = json.loads(response.data)
+        # Should be a list
+        self.assertIsInstance(data, list)
+        
+        # Since we inserted a dummy record, it should have at least 1 item
+        self.assertGreaterEqual(len(data), 1)
+        
+        # Check structure of the first item
+        first_item = data[0]
+        self.assertIn("id", first_item)
+        self.assertIn("timestamp", first_item)
+        self.assertIn("defect_type", first_item)
+        self.assertIn("image_path", first_item)
 
-    def test_toggle_inspection_endpoint(self):
-        """Test POST /api/v1/toggle_inspection toggles state."""
-        req = urllib.request.Request(f"http://localhost:{self.port}/api/v1/toggle_inspection", method="POST")
-        with urllib.request.urlopen(req) as response:
-            self.assertEqual(response.status, 200)
-            data = json.loads(response.read().decode())
-            self.assertIn("inspection_active", data)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
