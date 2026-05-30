@@ -410,6 +410,7 @@
         }
     </style>
     <script>
+        const BACKEND_URL = 'https://loomvision-ai.onrender.com';
         function shutdownApp() {
             if(confirm("Are you sure you want to completely stop the application? You will need to restart it from the terminal.")) {
                 fetch(`${BACKEND_URL}/api/v1/shutdown`, { method: 'POST' })
@@ -547,7 +548,6 @@
         }
 
         // ── WebSocket Integration ──────────────────────────────
-        const BACKEND_URL = 'https://loomvision-ai.onrender.com';
         const socket = io(BACKEND_URL, {transports: ['websocket']});
         
         socket.on('connect', () => {
