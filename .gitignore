@@ -46,3 +46,9 @@ output/defects/*.png
 # IDEs
 .idea/
 .vscode/
+node_modules
+
+# Ignore additional directories
+uploads/
+output/reports/
+.DS_Store

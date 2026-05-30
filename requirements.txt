@@ -3,4 +3,14 @@ numpy
 streamlit
 pandas
 pillow
-ultralytics
+torch
+torchvision
+scikit-image
+twilio
+python-dotenv
+
+flask
+flask-socketio
+flask-cors
+eventlet
+gunicorn

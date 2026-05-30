@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Analytics - LoomVision AI</title>
+<link rel="stylesheet" href="/tailwind_output.css">
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#6bd8cb",
+                        "on-surface": "#e2e2e9",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-tint": "#aac7ff",
+                        "surface-container-low": "#191c21",
+                        "surface-bright": "#37393f",
+                        "on-primary": "#002f65",
+                        "secondary-fixed": "#89f5e7",
+                        "surface-container-high": "#282a2f",
+                        "on-primary-fixed-variant": "#00458e",
+                        "surface-variant": "#33353a",
+                        "on-background": "#e2e2e9",
+                        "on-secondary-fixed": "#00201d",
+                        "on-surface-variant": "#c2c6d3",
+                        "on-primary-fixed": "#001b3e",
+                        "surface": "#111318",
+                        "on-tertiary-fixed": "#321300",
+                        "inverse-surface": "#e2e2e9",
+                        "secondary": "#6bd8cb",
+                        "tertiary": "#ffb689",
+                        "inverse-primary": "#255dac",
+                        "on-secondary": "#003732",
+                        "primary-fixed": "#d7e3ff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "outline-variant": "#424751",
+                        "surface-container": "#1d2025",
+                        "surface-dim": "#111318",
+                        "outline": "#8c919c",
+                        "surface-container-highest": "#33353a",
+                        "surface-container-lowest": "#0c0e13",
+                        "on-error": "#690005",
+                        "on-tertiary": "#512300",
+                        "tertiary-container": "#8d4200",
+                        "background": "#111318",
+                        "on-tertiary-fixed-variant": "#743500",
+                        "on-primary-container": "#b6ceff",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#2e3036",
+                        "tertiary-fixed-dim": "#ffb689",
+                        "primary-container": "#1a56a4",
+                        "on-tertiary-container": "#ffc09a",
+                        "tertiary-fixed": "#ffdbc8",
+                        "on-secondary-container": "#00302b",
+                        "secondary-container": "#29a195",
+                        "primary": "#aac7ff",
+                        "error": "#ffb4ab"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "sm": "8px",
+                        "xl": "48px",
+                        "md": "16px",
+                        "margin": "24px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Geist"],
+                        "body-md": ["Geist"],
+                        "headline-sm": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "label-md": ["Geist"],
+                        "body-sm": ["Geist"],
+                        "label-sm": ["Geist"],
+                        "body-lg": ["Geist"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["36px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "headline-sm": ["18px", { "lineHeight": "1.4", "letterSpacing": "0em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-sm": ["11px", { "lineHeight": "1", "letterSpacing": "0.03em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for data tables */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0F172A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pulse-critical {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        /* Bar chart animations */
+        @keyframes grow-up {
+            from { height: 0; opacity: 0; }
+            to { opacity: 1; }
+        }
+        .bar-grow {
+            animation: grow-up 1s ease-out forwards;
+            transform-origin: bottom;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col overflow-x-hidden selection:bg-primary-container selection:text-white">
+<!-- SideNavBar (Hidden on Mobile, flex on MD) -->
+<nav class="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 bg-surface-container border-r border-outline-variant z-40">
+<div class="flex items-center gap-md px-lg py-lg">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">visibility</span>
+<span class="font-display-lg text-headline-md font-black text-on-surface tracking-tight">LoomVision AI</span>
+</div>
+<div class="flex flex-col gap-base py-lg mt-md w-full">
+<a class="flex items-center gap-md px-lg py-3 text-on-surface-variant hover:bg-surface-bright hover:text-on-surface transition-all duration-200 group" href="/dashboard">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-lg py-3 text-on-surface-variant hover:bg-surface-bright hover:text-on-surface transition-all duration-200 group" href="/dashboard#live-feed">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">videocam</span>
+<span class="font-body-md text-body-md">Live Feed</span>
+</a>
+<a class="flex items-center gap-md px-lg py-3 text-on-surface-variant hover:bg-surface-bright hover:text-on-surface transition-all duration-200 group" href="/dashboard#defect-log">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">list_alt</span>
+<span class="font-body-md text-body-md">Defect Log</span>
+</a>
+<a class="flex items-center gap-md px-lg py-3 text-secondary-fixed-dim border-r-2 border-secondary-fixed-dim bg-secondary-container/10 transition-all duration-200" href="/analytics">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-body-md text-body-md font-medium">Analytics</span>
+</a>
+<a class="flex items-center gap-md px-lg py-3 text-on-surface-variant hover:bg-surface-bright hover:text-on-surface transition-all duration-200 group" href="/dashboard">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+<div class="mt-auto p-lg border-t border-outline-variant/30 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-bright flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface">Operator 04</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">Active Shift</span>
+</div>
+</div>
+</nav>
+<!-- TopAppBar (Mobile Only - Replaces standard top app bar to fit content better) -->
+<header class="md:hidden fixed top-0 w-full z-50 bg-surface border-b border-outline-variant flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">visibility</span>
+<span class="font-display-lg text-headline-sm font-bold tracking-tight text-on-surface">LoomVision AI</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-error pulse-critical text-[12px] absolute top-5 right-10" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 md:ml-64 pt-20 md:pt-0 p-gutter md:p-margin flex flex-col gap-margin pb-24 md:pb-margin relative overflow-hidden">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-md">
+<div>
+<h1 class="font-display-lg text-display-lg font-bold text-on-surface tracking-tight">Analytics Overview</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">System performance and defect distribution metrics.</p>
+</div>
+<div class="relative group">
+<button class="flex items-center gap-2 bg-surface border border-outline-variant rounded px-4 py-2 hover:border-primary transition-colors focus:outline-none focus:border-primary">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">calendar_today</span>
+<span class="font-label-sm text-label-sm text-on-surface">Last 7 Days</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm ml-2">expand_more</span>
+</button>
+<!-- Simple absolute dropdown for visual purposes -->
+<div class="absolute right-0 top-full mt-1 w-48 bg-surface-container-high border border-outline-variant rounded shadow-lg hidden group-hover:block z-50">
+<div class="flex flex-col py-2">
+<a class="px-4 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-bright" href="#">Today</a>
+<a class="px-4 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-bright bg-surface-bright/50 border-l-2 border-primary" href="#">Last 7 Days</a>
+<a class="px-4 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-bright" href="#">Last 30 Days</a>
+<a class="px-4 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-bright" href="#">This Quarter</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Summary KPI Cards - Bento Grid Row 1 -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- KPI 1 -->
+<div class="glass-panel p-md flex flex-col gap-2 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-24 h-24 bg-error/5 rounded-full blur-xl -mr-10 -mt-10 group-hover:bg-error/10 transition-colors"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Total Defects This Week</span>
+<span class="material-symbols-outlined text-error text-lg" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="mt-2 flex items-baseline gap-3">
+<span id="kpi-total-defects" class="font-display-lg text-4xl font-bold text-on-surface">0</span>
+<div class="flex items-center text-error bg-error/10 px-2 py-0.5 rounded border border-error/20">
+<span class="material-symbols-outlined text-[10px]">arrow_upward</span>
+<span class="font-label-sm text-[10px] ml-1">12%</span>
+</div>
+</div>
+<div class="w-full h-1 bg-surface-bright mt-4 rounded-full overflow-hidden">
+<div class="h-full bg-error w-[65%]"></div>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="glass-panel p-md flex flex-col gap-2 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-xl -mr-10 -mt-10 group-hover:bg-secondary/10 transition-colors"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Most Frequent Issue</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-lg" style="font-variation-settings: 'FILL' 1;">texture</span>
+</div>
+<div class="mt-2 flex flex-col">
+<span id="kpi-frequent-issue" class="font-display-lg text-3xl font-bold text-on-surface truncate">Loading...</span>
+<span id="kpi-frequent-issue-pct" class="font-body-sm text-body-sm text-secondary-fixed-dim mt-1">--% of total incidents</span>
+</div>
+<div class="w-full h-1 bg-surface-bright mt-auto rounded-full overflow-hidden">
+<div class="h-full bg-secondary-fixed-dim w-[42%]"></div>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="glass-panel p-md flex flex-col gap-2 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-xl -mr-10 -mt-10 group-hover:bg-primary/10 transition-colors"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">System Uptime</span>
+<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div class="mt-2 flex items-baseline gap-3">
+<span id="kpi-uptime" class="font-display-lg text-4xl font-bold text-on-surface">0.0%</span>
+<div class="flex items-center text-secondary-fixed-dim bg-secondary-fixed-dim/10 px-2 py-0.5 rounded border border-secondary-fixed-dim/20">
+<span class="material-symbols-outlined text-[10px]">arrow_upward</span>
+<span class="font-label-sm text-[10px] ml-1">0.2%</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-4">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim"></span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">Cameras Online: 24/24</span>
+</div>
+</div>
+</div>
+<!-- Charts Row - Bento Grid Row 2 -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter mt-sm">
+<!-- Bar Chart Panel (Spans 2 cols on lg) -->
+<div class="glass-panel p-md flex flex-col lg:col-span-2">
+<div class="flex justify-between items-center border-b border-outline-variant/30 pb-sm mb-md">
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Defect Frequency (7 Days)</h2>
+<span class="material-symbols-outlined text-on-surface-variant text-sm cursor-pointer hover:text-primary">more_horiz</span>
+</div>
+<!-- Pseudo Bar Chart -->
+<div class="flex-1 flex items-end justify-between gap-2 pt-4 pb-2 h-48 relative border-b border-outline-variant/50">
+<!-- Y Axis Labels -->
+<div class="absolute left-0 bottom-2 top-4 w-8 flex flex-col justify-between text-[10px] text-on-surface-variant font-label-sm text-right pr-2">
+<span>300</span>
+<span>200</span>
+<span>100</span>
+<span>0</span>
+</div>
+<!-- Chart Area -->
+<div class="flex-1 flex items-end justify-around ml-8 h-full relative">
+<!-- Grid lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+<div class="w-full h-px bg-outline-variant/20"></div>
+<div class="w-full h-px bg-outline-variant/20"></div>
+<div class="w-full h-px bg-outline-variant/20"></div>
+<div class="w-full h-px bg-transparent"></div> <!-- Baseline -->
+</div>
+<!-- Bars -->
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-primary/20 border border-primary/50 rounded-t relative bar-grow hover:bg-primary/40 transition-colors" style="height: 60%;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">180</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm">Mon</span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-primary/20 border border-primary/50 rounded-t relative bar-grow hover:bg-primary/40 transition-colors" style="height: 85%; animation-delay: 0.1s;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">255</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm text-error font-bold">Tue</span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-primary/20 border border-primary/50 rounded-t relative bar-grow hover:bg-primary/40 transition-colors" style="height: 40%; animation-delay: 0.2s;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">120</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm">Wed</span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-primary/20 border border-primary/50 rounded-t relative bar-grow hover:bg-primary/40 transition-colors" style="height: 55%; animation-delay: 0.3s;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">165</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm">Thu</span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-primary/20 border border-primary/50 rounded-t relative bar-grow hover:bg-primary/40 transition-colors" style="height: 30%; animation-delay: 0.4s;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">90</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm">Fri</span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-secondary-container/30 border border-secondary-fixed-dim/50 rounded-t relative bar-grow hover:bg-secondary-container/50 transition-colors" style="height: 45%; animation-delay: 0.5s;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">135</div>
+</div>
+<span class="text-[10px] text-secondary-fixed-dim font-label-sm">Sat</span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10 w-full group">
+<div class="w-full max-w-[32px] bg-primary/20 border border-primary/50 rounded-t relative bar-grow hover:bg-primary/40 transition-colors" style="height: 25%; animation-delay: 0.6s;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant px-2 py-1 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">75</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm">Sun</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Distribution Pie Chart Panel -->
+<div class="glass-panel p-md flex flex-col">
+<div class="flex justify-between items-center border-b border-outline-variant/30 pb-sm mb-md">
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Defect Types</h2>
+<span class="material-symbols-outlined text-on-surface-variant text-sm cursor-pointer hover:text-primary">filter_list</span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center relative py-4">
+<!-- CSS Conic Gradient Pie Chart representation -->
+<div class="w-32 h-32 rounded-full relative" style="background: conic-gradient(from 0deg, #1a56a4 0% 42%, #29a195 42% 70%, #424751 70% 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);">
+<!-- Inner cut for donut effect -->
+<div class="absolute inset-4 bg-surface rounded-full flex flex-col items-center justify-center border border-outline-variant/30">
+<span class="font-display-lg text-xl font-bold text-on-surface">1.2k</span>
+<span class="text-[8px] text-on-surface-variant uppercase tracking-wider">Total</span>
+</div>
+</div>
+<!-- Legend -->
+<div class="w-full mt-6 flex flex-col gap-3 px-2">
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-sm bg-primary-container"></span>
+<span class="font-body-sm text-body-sm text-on-surface">Weave Gap</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors">42%</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-sm bg-secondary-container"></span>
+<span class="font-body-sm text-body-sm text-on-surface">Thread Break</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-secondary-fixed-dim transition-colors">28%</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-sm bg-outline-variant"></span>
+<span class="font-body-sm text-body-sm text-on-surface">Color Bleed</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">30%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-surface-container-high border-t border-outline-variant flex justify-around items-center h-16 pb-safe">
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant active:bg-surface-bright" href="/dashboard">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant active:bg-surface-bright" href="/dashboard#live-feed-column">
+<span class="material-symbols-outlined">videocam</span>
+<span class="font-label-sm text-label-sm mt-1">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant active:bg-surface-bright" href="/dashboard#defect-log-column">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-sm text-label-sm mt-1">Logs</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-secondary-fixed-dim font-bold active:bg-surface-bright" href="/analytics">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-label-sm text-label-sm mt-1">Data</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant active:bg-surface-bright" href="/dashboard">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-sm text-label-sm mt-1">Setup</span>
+</a>
+</nav>
+<!-- Footer -->
+<footer class="md:ml-64 w-full bg-surface-container-lowest border-t border-outline-variant flex flex-col md:flex-row justify-between items-center px-margin py-lg gap-md z-10 relative">
+<div class="font-display-lg text-label-md font-bold uppercase tracking-widest text-outline">
+            LoomVision AI
+        </div>
+<div class="flex gap-4">
+<a class="font-body-sm text-body-sm text-outline hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="font-body-sm text-body-sm text-outline hover:text-primary transition-colors" href="#">API</a>
+<a class="font-body-sm text-body-sm text-outline hover:text-primary transition-colors" href="#">Support</a>
+<a class="font-body-sm text-body-sm text-outline hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed-dim"></span> Status
+            </a>
+</div>
+<div class="font-body-sm text-body-sm text-outline text-center md:text-right">
+            © 2024 LoomVision AI. Industry 4.0 Standard.
+        </div>
+</footer>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const socket = io();
+        
+        socket.on('metrics_update', (data) => {
+            if (data && !data.error) {
+                document.getElementById('kpi-total-defects').textContent = data.defects_found.toLocaleString();
+                // We use accuracy rate as pseudo-uptime for the dashboard
+                document.getElementById('kpi-uptime').textContent = data.accuracy_rate;
+            }
+        });
+
+        socket.on('defect_alert', (data) => {
+            fetchAnalyticsData();
+        });
+
+        async function fetchAnalyticsData() {
+            try {
+                const response = await fetch('/api/v1/defects');
+                const defects = await response.json();
+                
+                if (defects.length > 0) {
+                    // Calculate frequencies
+                    const counts = {};
+                    defects.forEach(d => {
+                        counts[d.defect_type] = (counts[d.defect_type] || 0) + 1;
+                    });
+                    
+                    // Find most frequent
+                    let maxType = "None";
+                    let maxCount = 0;
+                    for (const [type, count] of Object.entries(counts)) {
+                        if (count > maxCount) {
+                            maxCount = count;
+                            maxType = type;
+                        }
+                    }
+                    
+                    const pct = Math.round((maxCount / defects.length) * 100);
+                    document.getElementById('kpi-frequent-issue').textContent = maxType;
+                    document.getElementById('kpi-frequent-issue-pct').textContent = `${pct}% of total incidents`;
+                    
+                    // The charts below are still visual placeholders in HTML, 
+                    // but in a real app we would use Chart.js or D3 to render the counts.
+                } else {
+                    document.getElementById('kpi-frequent-issue').textContent = "None";
+                    document.getElementById('kpi-frequent-issue-pct').textContent = "0% of total incidents";
+                }
+            } catch(e) {
+                console.error("Failed to fetch analytics", e);
+            }
+        }
+        
+        fetchAnalyticsData();
+    });
+</script>
+</body></html>
+

@@ -1,0 +1,23 @@
+{
+  "name": "loomvisionai",
+  "version": "1.0.0",
+  "description": "**Team TriNetra Vision**",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "npx @tailwindcss/cli -i ./input.css -o ./frontend/tailwind_output.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0"
+  }
+}
