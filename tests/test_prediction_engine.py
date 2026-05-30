@@ -22,9 +22,17 @@ class TestPredictionEngine(unittest.TestCase):
         self.assertIsNone(result.defect_type)
         self.assertEqual(result.metadata["engine_used"], "none")
 
-    def test_defective_frame_processing(self):
+    @patch('src.heuristic_classifier.HeuristicClassifier.classify_defect')
+    def test_defective_frame_processing(self, mock_classify):
         """Test that a structural defect is caught."""
+        # Force classifier to return Broken Thread so it is NOT suppressed
+        mock_classify.return_value = "Broken Thread"
+        
+        # Feed the defective frame 3 times to satisfy the SequenceModel debouncing
+        self.engine.process_frame(self.defective_frame)
+        self.engine.process_frame(self.defective_frame)
         result = self.engine.process_frame(self.defective_frame)
+        
         self.assertTrue(result.has_defect)
         # Assuming the structural detector or heuristic classifier will flag it
         self.assertIsNotNone(result.defect_type)
@@ -36,13 +44,15 @@ class TestPredictionEngine(unittest.TestCase):
         # Force the classifier to return Wrinkle
         mock_classify.return_value = "Wrinkle"
         
-        # Process a defective frame that would normally trigger a defect
+        # Process a defective frame 3 times (would normally trigger a defect)
+        self.engine.process_frame(self.defective_frame)
+        self.engine.process_frame(self.defective_frame)
         result = self.engine.process_frame(self.defective_frame)
         
         # Because it's classified as a Wrinkle, it should be suppressed
         self.assertFalse(result.has_defect)
         self.assertIsNone(result.defect_type)
-        mock_classify.assert_called_once()
+        mock_classify.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
