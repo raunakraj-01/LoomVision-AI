@@ -8,7 +8,7 @@ Use this template to create your final presentation slides. It is structured per
 **Title:** LoomVision AI: Real-Time Fabric Defect Detection using Computer Vision
 **Subtitle:** Automating Quality Assurance in Textile Manufacturing
 **Developer:** Raunak Raj
-**Guide/Mentor:** [Insert Name]
+**Guide/Mentor:** Dr. Prapulla S B
 
 ## Slide 2: Problem Statement
 *   **Manual Inspection is Flawed:** Human visual inspection of fabric is slow, prone to fatigue, and only ~60-70% accurate.
