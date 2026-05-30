@@ -14,3 +14,4 @@ flask-socketio
 flask-cors
 eventlet
 gunicorn
+reportlab
