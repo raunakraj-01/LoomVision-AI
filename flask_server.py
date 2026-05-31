@@ -172,7 +172,20 @@ def process_camera_feed():
             
         ret, frame = CAM_CONTROLLER.get_frame()
         if not ret or frame is None:
-            eventlet.sleep(0.05)
+            # Create a dummy frame to let the user know the server camera is unavailable
+            dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(dummy_frame, "Server Camera Unavailable", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            cv2.putText(dummy_frame, "Please use 'Browser Camera' if on Cloud", (60, 280), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
+            
+            # Emit the dummy frame
+            _, buffer = cv2.imencode('.jpg', dummy_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            b64_frame = base64.b64encode(buffer).decode('utf-8')
+            socketio.emit("frame_update", {
+                "image": f"data:image/jpeg;base64,{b64_frame}",
+                "raw_image": f"data:image/jpeg;base64,{b64_frame}"
+            })
+            
+            eventlet.sleep(0.5)
             continue
 
         process_and_emit_frame(frame, run_inspection=INSPECTION_ACTIVE)
