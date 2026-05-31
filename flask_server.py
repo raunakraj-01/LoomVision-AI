@@ -78,56 +78,66 @@ def init_system():
     DB_LOGGER = DatabaseLogger()
 
 
-def process_and_emit_frame(frame):
+def process_and_emit_frame(frame, run_inspection=True):
     global GLOBAL_SCANS, DEFECTS_FOUND, LAST_DEFECT_LOG_TIME, LATEST_FRAME, LATEST_HEATMAP
     
     # Save a clean copy BEFORE any ML processing touches the frame
     raw_frame = frame.copy()
+    safe_raw = np.ascontiguousarray(raw_frame)
 
     try:
-        GLOBAL_SCANS += 1
-        
-        # Run prediction
-        result = PREDICTION_ENGINE.process_frame(frame)
-        
-        # Force contiguous numpy arrays — eventlet's monkey-patching can
-        # wrap objects so that OpenCV's C extension refuses them.
-        annotated = np.ascontiguousarray(result.annotated_frame)
-        LATEST_FRAME = annotated
-        LATEST_HEATMAP = result.heatmap
-        safe_raw = np.ascontiguousarray(raw_frame)
-
-        # Log defect and alert
-        if result.has_defect:
-            DEFECTS_FOUND += 1
+        if run_inspection:
+            GLOBAL_SCANS += 1
             
-            # Only log to DB once per cooldown window
-            # This prevents 30+ duplicate entries for a single real-world defect
-            now = time.time()
-            if now - LAST_DEFECT_LOG_TIME > DEFECT_LOG_COOLDOWN:
-                LAST_DEFECT_LOG_TIME = now
-                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            # Run prediction
+            result = PREDICTION_ENGINE.process_frame(frame)
+            
+            # Force contiguous numpy arrays — eventlet's monkey-patching can
+            # wrap objects so that OpenCV's C extension refuses them.
+            annotated = np.ascontiguousarray(result.annotated_frame)
+            LATEST_FRAME = annotated
+            LATEST_HEATMAP = result.heatmap
+
+            # Log defect and alert
+            if result.has_defect:
+                DEFECTS_FOUND += 1
                 
-                # Log to DB (this also saves the image and triggers WhatsApp internally)
-                DB_LOGGER.log_defect(
-                    defect_type=result.defect_type or "Unknown Anomaly",
-                    annotated_frame=annotated,
-                    confidence=result.confidence,
-                    anomaly_score=float(result.anomaly_score)
-                )
-                
-                # Notify clients via WebSocket so UI updates instantly
-                # Generate the same filename format that database.py uses for the websocket message
-                filename_safe_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-                expected_img_path = f"/output/defects/defect_{filename_safe_time}.jpg"
-                
-                socketio.emit("defect_alert", {
-                    "defect_type": result.defect_type,
-                    "confidence": result.confidence,
-                    "anomaly_score": float(result.anomaly_score),
-                    "timestamp": timestamp,
-                    "image_path": expected_img_path
-                })
+                # Only log to DB once per cooldown window
+                # This prevents 30+ duplicate entries for a single real-world defect
+                now = time.time()
+                if now - LAST_DEFECT_LOG_TIME > DEFECT_LOG_COOLDOWN:
+                    LAST_DEFECT_LOG_TIME = now
+                    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # Log to DB (this also saves the image and triggers WhatsApp internally)
+                    DB_LOGGER.log_defect(
+                        defect_type=result.defect_type or "Unknown Anomaly",
+                        annotated_frame=annotated,
+                        confidence=result.confidence,
+                        anomaly_score=float(result.anomaly_score)
+                    )
+                    
+                    # Notify clients via WebSocket so UI updates instantly
+                    # Generate the same filename format that database.py uses for the websocket message
+                    filename_safe_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    expected_img_path = f"/output/defects/defect_{filename_safe_time}.jpg"
+                    
+                    socketio.emit("defect_alert", {
+                        "defect_type": result.defect_type,
+                        "confidence": result.confidence,
+                        "anomaly_score": float(result.anomaly_score),
+                        "timestamp": timestamp,
+                        "image_path": expected_img_path
+                    })
+
+            socketio.emit("calibration_update", {
+                "is_calibrated": getattr(result, "is_calibrated", True),
+                "progress": getattr(result, "calibration_progress", 1.0)
+            })
+        else:
+            # Inspection not active, just show the raw frame
+            annotated = safe_raw
+            LATEST_FRAME = annotated
 
         # Emit live frames (JPEG encoded base64)
         # AI-annotated frame (with heatmap overlay, bounding boxes, etc.)
@@ -137,11 +147,6 @@ def process_and_emit_frame(frame):
         # Raw clean camera frame (no AI overlay)
         _, raw_buffer = cv2.imencode('.jpg', safe_raw, [cv2.IMWRITE_JPEG_QUALITY, 70])
         b64_raw_frame = base64.b64encode(raw_buffer).decode('utf-8')
-        
-        socketio.emit("calibration_update", {
-            "is_calibrated": getattr(result, "is_calibrated", True),
-            "progress": getattr(result, "calibration_progress", 1.0)
-        })
         
         socketio.emit("frame_update", {
             "image": f"data:image/jpeg;base64,{b64_frame}",
@@ -165,16 +170,12 @@ def process_camera_feed():
             eventlet.sleep(0.1)
             continue
             
-        if not INSPECTION_ACTIVE:
-            eventlet.sleep(0.1)
-            continue
-            
         ret, frame = CAM_CONTROLLER.get_frame()
         if not ret or frame is None:
             eventlet.sleep(0.05)
             continue
 
-        process_and_emit_frame(frame)
+        process_and_emit_frame(frame, run_inspection=INSPECTION_ACTIVE)
 
         # Sleep to yield to other greenlets (Eventlet requirement)
         eventlet.sleep(0.01)
@@ -358,7 +359,7 @@ def handle_mobile_mode(data):
 
 @socketio.on("client_frame")
 def handle_client_frame(data):
-    if not INSPECTION_ACTIVE or not MOBILE_CAMERA_ACTIVE:
+    if not MOBILE_CAMERA_ACTIVE:
         return
         
     try:
@@ -371,7 +372,7 @@ def handle_client_frame(data):
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         
         if frame is not None:
-            process_and_emit_frame(frame)
+            process_and_emit_frame(frame, run_inspection=INSPECTION_ACTIVE)
     except Exception as e:
         print(f"[WebSocket] Error handling client frame: {e}")
 
