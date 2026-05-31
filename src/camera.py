@@ -131,7 +131,18 @@ class CameraController:
     def _get_working_indices(self) -> list:
         """Returns a list of available camera indices based on system_profiler and manual probes."""
         names = self._get_camera_names_mac()
-        working = list(range(len(names))) if names else [0]
+        
+        # If on Windows/Linux (names is empty), probe a few common indices
+        if not names:
+            working = []
+            for i in range(3):
+                test_cap = cv2.VideoCapture(i)
+                if test_cap.isOpened():
+                    working.append(i)
+                test_cap.release()
+            return working if working else [0]
+            
+        working = list(range(len(names)))
         
         # MacOS system_profiler is notoriously slow to update when a USB camera is plugged in.
         # If it only found the laptop webcam, actively probe index 1 just in case.
@@ -173,9 +184,9 @@ class CameraController:
             print(f"[Camera] ❌ Explicit camera {self.camera_index} failed to warm up.")
             return False
 
-        print("[Camera] Auto-detecting cameras via system_profiler…")
+        print("[Camera] Auto-detecting cameras…")
         names = self._get_camera_names_mac()
-        working = list(range(len(names))) if names else [0]
+        working = self._get_working_indices()
 
         if not working:
             print("[Camera] ❌ No working camera found.")
@@ -183,12 +194,12 @@ class CameraController:
 
         if len(working) == 1:
             chosen = working[0]
-            label = names[chosen] if chosen < len(names) else "unknown"
+            label = names[chosen] if (names and chosen < len(names)) else "unknown"
             print(f"[Camera] Only one camera found: '{label}' at index {chosen}.")
         else:
-            chosen = self._pick_external_camera(names, working)
-            label = names[chosen] if chosen < len(names) else "unknown"
-            print(f"[Camera] Selected external camera: '{label}' at index {chosen}.")
+            chosen = self._pick_external_camera(names, working) if names else working[0]
+            label = names[chosen] if (names and chosen < len(names)) else "unknown"
+            print(f"[Camera] Selected camera: '{label}' at index {chosen}.")
 
         return self._open_and_warmup(chosen)
 

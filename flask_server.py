@@ -62,6 +62,9 @@ ALERT_COOLDOWN = 10  # seconds (reduced for testing)
 LAST_DEFECT_LOG_TIME = 0
 DEFECT_LOG_COOLDOWN = 5  # seconds — same defect won't be saved again within this window
 
+# Global to store the latest frame from mobile browser camera to prevent WebSocket queue buildup
+MOBILE_LATEST_FRAME = None
+
 
 # ── Initialization ────────────────────────────────────────────────────
 def init_system():
@@ -160,14 +163,20 @@ def process_and_emit_frame(frame, run_inspection=True):
 # ── Background Processing Thread ──────────────────────────────────────
 def process_camera_feed():
     """Background task to read from local camera and run predictions."""
-    global GLOBAL_SCANS, DEFECTS_FOUND, LAST_DEFECT_LOG_TIME, LATEST_FRAME, LATEST_HEATMAP
+    global GLOBAL_SCANS, DEFECTS_FOUND, LAST_DEFECT_LOG_TIME, LATEST_FRAME, LATEST_HEATMAP, MOBILE_LATEST_FRAME
     
     print("[Background] Started background camera worker.")
     while not STOP_EVENT.is_set():
         if MOBILE_CAMERA_ACTIVE:
-            # If mobile camera is active, we don't pull from the local CAM_CONTROLLER.
-            # Instead, we just sleep and let the websocket handler process incoming frames.
-            eventlet.sleep(0.1)
+            frame = MOBILE_LATEST_FRAME
+            if frame is None:
+                eventlet.sleep(0.05)
+                continue
+            
+            # Clear it so we don't process the same frame multiple times if the client is slow
+            MOBILE_LATEST_FRAME = None
+            process_and_emit_frame(frame, run_inspection=INSPECTION_ACTIVE)
+            eventlet.sleep(0.01)
             continue
             
         ret, frame = CAM_CONTROLLER.get_frame()
@@ -372,6 +381,7 @@ def handle_mobile_mode(data):
 
 @socketio.on("client_frame")
 def handle_client_frame(data):
+    global MOBILE_LATEST_FRAME
     if not MOBILE_CAMERA_ACTIVE:
         return
         
@@ -385,7 +395,9 @@ def handle_client_frame(data):
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         
         if frame is not None:
-            process_and_emit_frame(frame, run_inspection=INSPECTION_ACTIVE)
+            # Just store the latest frame. The background thread will pick it up and process it.
+            # This prevents WebSocket queue buildup and camera freezing when ML processing is slow.
+            MOBILE_LATEST_FRAME = frame
     except Exception as e:
         print(f"[WebSocket] Error handling client frame: {e}")
 

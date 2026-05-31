@@ -195,8 +195,8 @@
 </button>
 <select id="camera-select" class="hidden ml-2 bg-surface-container-high text-on-surface border border-outline-variant rounded px-2 py-1 text-sm focus:outline-none focus:border-primary transition-colors"></select>
 <!-- Hidden video/canvas for local capture -->
-<video id="local-video" class="hidden" autoplay playsinline></video>
-<canvas id="local-canvas" class="hidden" width="640" height="480"></canvas>
+<video id="local-video" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;" autoplay playsinline></video>
+<canvas id="local-canvas" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;" width="640" height="480"></canvas>
 <button id="design-ideas-btn" aria-label="Design Ideas" onclick="fetchDesignSuggestions()" class="px-3 py-1 bg-primary-container/30 text-primary-fixed-dim rounded hover:bg-primary-container/50 transition-colors flex items-center gap-2 text-sm font-medium ml-2 border border-primary/40">
     <span class="material-symbols-outlined" style="font-size: 18px;" data-icon="palette">palette</span>
     Design Ideas
@@ -310,7 +310,7 @@
 <div id="camera-hint" class="absolute inset-0 flex items-center justify-center bg-black/70 z-50 transition-opacity duration-500">
     <div class="text-center p-6 bg-surface-container-high border-2 border-primary rounded-xl shadow-2xl">
         <h2 class="text-2xl font-bold mb-2 text-on-surface">Seeing the Laptop Camera?</h2>
-        <p class="text-on-surface-variant mb-4">macOS sometimes mixes up the camera numbers.</p>
+        <p class="text-on-surface-variant mb-4">Your system might pick the wrong camera by default.</p>
         <button onclick="switchCamera(); document.getElementById('camera-hint').style.display='none';" class="px-6 py-3 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary/90 transition shadow-lg text-lg flex items-center gap-2 mx-auto">
             <span class="material-symbols-outlined">cameraswitch</span>
             Click Here to Switch to Phone
