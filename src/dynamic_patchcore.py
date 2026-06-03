@@ -207,7 +207,7 @@ class DynamicPatchCore:
     #  Core Detection                                                      #
     # ------------------------------------------------------------------ #
 
-    def detect_defects(self, frame: np.ndarray):
+    def detect_defects(self, frame: np.ndarray, is_belt_stopped: bool = True):
         """
         Process a single camera frame in real time.
 
@@ -215,6 +215,12 @@ class DynamicPatchCore:
         ----------
         frame : np.ndarray
             BGR image from OpenCV / webcam.
+        is_belt_stopped : bool
+            If True the conveyor belt is confirmed stopped and the frame
+            is safe for memory-bank learning and threshold calibration.
+            When False, detection still runs but the memory bank is NOT
+            updated (prevents blurry motion frames from polluting the
+            "normal" reference).
 
         Returns
         -------
@@ -231,15 +237,19 @@ class DynamicPatchCore:
         patch_features = self._extract_patch_features(frame)  # [196, 384]
         global_embedding = patch_features.mean(dim=0)  # [384] global frame representation
 
-        self._frame_count += 1
+        # Only count stopped-belt frames toward warmup so the memory
+        # bank is built exclusively from sharp, stationary fabric.
+        if is_belt_stopped:
+            self._frame_count += 1
 
         # ── Warmup phase: accumulate memory bank ──
         if not self.is_warmed_up:
-            self._memory_deque.append(patch_features)
+            if is_belt_stopped:
+                self._memory_deque.append(patch_features)
             pct = int(self.warmup_progress * 100)
             cv2.putText(
                 annotated,
-                f"AI Learning Saree Pattern... {pct}%",
+                f"AI Learning Fabric Pattern... {pct}%",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -338,10 +348,12 @@ class DynamicPatchCore:
             defect_info = None
 
             # ── Update memory bank with this clean frame ──
-            self._memory_deque.append(patch_features)
-
-            # ── Update adaptive threshold history ──
-            self._score_history.append(max_score)
+            # Only learn from stopped-belt frames to keep the memory bank
+            # free of motion-blurred references.
+            if is_belt_stopped:
+                self._memory_deque.append(patch_features)
+                # ── Update adaptive threshold history ──
+                self._score_history.append(max_score)
 
             cv2.putText(
                 annotated,

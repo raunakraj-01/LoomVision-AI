@@ -65,6 +65,9 @@ DEFECT_LOG_COOLDOWN = 5  # seconds — same defect won't be saved again within t
 # Global to store the latest frame from mobile browser camera to prevent WebSocket queue buildup
 MOBILE_LATEST_FRAME = None
 
+# Belt state tracking for metrics
+BELT_STATE = "stopped"
+
 
 # ── Initialization ────────────────────────────────────────────────────
 def init_system():
@@ -82,7 +85,7 @@ def init_system():
 
 
 def process_and_emit_frame(frame, run_inspection=True):
-    global GLOBAL_SCANS, DEFECTS_FOUND, LAST_DEFECT_LOG_TIME, LATEST_FRAME, LATEST_HEATMAP
+    global GLOBAL_SCANS, DEFECTS_FOUND, LAST_DEFECT_LOG_TIME, LATEST_FRAME, LATEST_HEATMAP, BELT_STATE
     
     # Save a clean copy BEFORE any ML processing touches the frame
     raw_frame = frame.copy()
@@ -95,6 +98,8 @@ def process_and_emit_frame(frame, run_inspection=True):
             # Run prediction
             result = PREDICTION_ENGINE.process_frame(frame)
             
+            # Update global belt state from prediction metadata
+            BELT_STATE = result.metadata.get("belt_state", "stopped")
             # Force contiguous numpy arrays — eventlet's monkey-patching can
             # wrap objects so that OpenCV's C extension refuses them.
             annotated = np.ascontiguousarray(result.annotated_frame)
@@ -153,7 +158,8 @@ def process_and_emit_frame(frame, run_inspection=True):
         
         socketio.emit("frame_update", {
             "image": f"data:image/jpeg;base64,{b64_frame}",
-            "raw_image": f"data:image/jpeg;base64,{b64_raw_frame}"
+            "raw_image": f"data:image/jpeg;base64,{b64_raw_frame}",
+            "belt_state": BELT_STATE
         })
 
     except Exception as e:
@@ -214,7 +220,8 @@ def metrics_publisher():
             "defects_found": DEFECTS_FOUND,
             "uptime_seconds": uptime,
             "accuracy_rate": f"{accuracy:.1f}%",
-            "inspection_active": INSPECTION_ACTIVE
+            "inspection_active": INSPECTION_ACTIVE,
+            "belt_state": BELT_STATE
         }
         socketio.emit("metrics_update", metrics)
         eventlet.sleep(2.0)
@@ -253,7 +260,8 @@ def get_metrics():
         "defects_found": DEFECTS_FOUND,
         "uptime": time.time() - START_TIME,
         "accuracy_rate": f"{accuracy:.1f}%",
-        "inspection_active": INSPECTION_ACTIVE
+        "inspection_active": INSPECTION_ACTIVE,
+        "belt_state": BELT_STATE
     })
 
 @app.route("/api/v1/defects", methods=["GET"])

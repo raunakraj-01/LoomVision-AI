@@ -15,6 +15,7 @@ from src.dynamic_patchcore import DynamicPatchCore
 from src.detection import DefectDetector, AdaptivePatternDetector
 from src.sequence_model import TemporalAnomalyDetector
 from src.heuristic_classifier import HeuristicClassifier
+from src.conveyor_state import ConveyorStateDetector
 
 @dataclass
 class PredictionResult:
@@ -52,12 +53,57 @@ class PredictionEngine:
         print("[PredictionEngine] Initializing Heuristic Classifier...")
         self.classifier = HeuristicClassifier()
 
+        print("[PredictionEngine] Initializing Conveyor Belt State Detector...")
+        self.belt_detector = ConveyorStateDetector(
+            blur_threshold=100.0,
+            motion_threshold=5.0,
+            settling_time=0.5,
+        )
+
         self.calibration_frames = 10
         self.frames_processed = 0
         self.consecutive_defect_frames = 0
+        self._belt_state = "stopped"  # cache for metadata
 
     def process_frame(self, frame: np.ndarray) -> PredictionResult:
         start_time = time.time()
+
+        # ── Belt state detection ──
+        self._belt_state = self.belt_detector.update(frame)
+        is_stopped = self.belt_detector.is_stopped
+
+        # If the belt is moving or settling, skip heavy AI processing.
+        # Return a lightweight result with the raw frame.
+        if not is_stopped:
+            proc_time_ms = (time.time() - start_time) * 1000
+            annotated = frame.copy()
+            label = "Belt Moving — Skipping AI" if self._belt_state == "moving" else "Belt Settling..."
+            color = (0, 165, 255) if self._belt_state == "moving" else (255, 200, 0)
+            cv2.putText(
+                annotated, label,
+                (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2,
+            )
+            # Reset debounce counter — belt movement invalidates the streak
+            self.consecutive_defect_frames = 0
+            return PredictionResult(
+                has_defect=False,
+                defect_type=None,
+                confidence=0.0,
+                anomaly_score=0.0,
+                temporal_score=0.0,
+                heatmap=None,
+                annotated_frame=annotated,
+                bounding_boxes=[],
+                metadata={
+                    "processing_ms": proc_time_ms,
+                    "engine_used": "skipped",
+                    "belt_state": self._belt_state,
+                },
+                is_calibrated=self.frames_processed >= self.calibration_frames,
+                calibration_progress=min(1.0, self.frames_processed / self.calibration_frames),
+            )
+
+        # ── Belt is stopped — run full AI pipeline ──
         
         # Preprocessing
         preprocessed_gray = apply_preprocessing(frame)
@@ -82,7 +128,7 @@ class PredictionEngine:
             global_features = None
             pc_has_defect, pc_defect_info, pc_annotated, global_embedding, pc_heatmap_overlay = False, None, frame.copy(), None, frame.copy()
             try:
-                pc_has_defect, pc_defect_info, pc_annotated, global_embedding, pc_heatmap_overlay = self.patchcore.detect_defects(frame)
+                pc_has_defect, pc_defect_info, pc_annotated, global_embedding, pc_heatmap_overlay = self.patchcore.detect_defects(frame, is_belt_stopped=True)
             except Exception as e:
                 print(f"[PredictionEngine] PatchCore error: {e}")
             
@@ -191,10 +237,12 @@ class PredictionEngine:
                 annotated_frame = frame.copy() # Strip away bounding boxes and heatmap overlay
                 
         # --- Temporal Debouncing ---
-        # Require a defect to be present for at least 3 consecutive frames (~300ms) to ignore brief flashes
+        # Belt is stopped so frames are stable; require only 2 consecutive
+        # defect frames (reduced from 3) to avoid missing real defects on
+        # a stop-and-go conveyor.
         if has_defect:
             self.consecutive_defect_frames += 1
-            if self.consecutive_defect_frames < 3:
+            if self.consecutive_defect_frames < 2:
                 has_defect = False
                 defect_type = None
                 heatmap = None
@@ -215,7 +263,8 @@ class PredictionEngine:
             bounding_boxes=[], # Could parse from annotated frame or pass from engines
             metadata={
                 "processing_ms": proc_time_ms,
-                "engine_used": engine_used
+                "engine_used": engine_used,
+                "belt_state": self._belt_state,
             },
             is_calibrated=is_calibrated,
             calibration_progress=calibration_progress
