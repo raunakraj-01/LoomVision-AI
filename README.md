@@ -45,18 +45,27 @@ LoomVisionAI/
 │   ├── sequence_model.py      # Temporal debouncing logic
 │   ├── prediction_engine.py   # Orchestrator binding all AI modules together
 │   ├── database.py            # SQLite defect logger
-│   └── notifications.py       # Twilio WhatsApp Integration
+│   ├── notifications.py       # Twilio WhatsApp Integration
+│   ├── detection.py           # Core detection logic & helper functions
+│   ├── report_generator.py    # Generates PDF/HTML reports for defects
+│   └── design_suggestions.py  # Generates design layout/pattern suggestions
 ├── vercel_frontend/           # The static HTML/JS App (Deployed to Vercel)
+├── frontend/                  # Local frontend templates and assets
+├── tests/                     # Unit and integration test suite
+├── docs/                      # Documentation
+├── data/                      # Data resources and models
 ├── output/defects/            # Captured frames of detected defects
 ├── render.yaml                # Automated Cloud Backend deployment config
 ├── launch.py                  # Local Unified Launcher (Server + USB Watcher)
 ├── usb_watcher.py             # Daemon to auto-open dashboard on USB connect
 ├── flask_server.py            # Main Cloud API and WebSocket server
+├── evaluate_classifier.py     # Script to evaluate the classifier performance
+├── package.json               # Node.js dependencies (TailwindCSS setup)
 └── requirements.txt           # Project dependencies
 ```
 
 ## Tech Stack
-`PyTorch` · `torchvision (ResNet-18)` · `OpenCV` · `Flask-SocketIO` · `Twilio` · `SQLite` · `Vanilla HTML/JS/CSS`
+`PyTorch` · `torchvision (ResNet-18)` · `OpenCV` · `Flask-SocketIO` · `Twilio` · `SQLite` · `Tailwind CSS` · `Vanilla HTML/JS`
 
 ---
 
