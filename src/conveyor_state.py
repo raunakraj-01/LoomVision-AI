@@ -116,9 +116,12 @@ class ConveyorStateDetector:
         blur_score = self._compute_blur_score(gray)
         motion_score = self._compute_motion_score(gray)
 
-        # A frame is "in motion" if it is blurry OR has high pixel diff
+        # A frame is "in motion" only when BOTH signals agree:
+        # low sharpness (motion blur) AND high pixel diff (actual movement).
+        # Using OR was too aggressive — fabric textures can have inherently
+        # low Laplacian variance, causing false "moving" detection.
         is_frame_moving = (
-            blur_score < self.blur_threshold or motion_score > self.motion_threshold
+            blur_score < self.blur_threshold and motion_score > self.motion_threshold
         )
 
         # Store previous frame for next diff

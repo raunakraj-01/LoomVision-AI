@@ -52,3 +52,5 @@ node_modules
 uploads/
 output/reports/
 .DS_Store
+.usb_status.json
+usb_dump.txt

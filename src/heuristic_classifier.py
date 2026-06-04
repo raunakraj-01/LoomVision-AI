@@ -60,7 +60,7 @@ class HeuristicClassifier:
         mean_hsv_frame = cv2.mean(hsv_frame)[:3]
         
         color_diff = np.sqrt(sum((a - b) ** 2 for a, b in zip(mean_hsv_roi, mean_hsv_frame)))
-        if color_diff > 35:  # Significant color shift threshold
+        if color_diff > 50:  # Significant color shift threshold (raised from 35 to avoid false stain labels)
             return "Stain"
             
         # 2. Convert ROI to grayscale for structure analysis
@@ -74,7 +74,7 @@ class HeuristicClassifier:
         edges = cv2.Canny(gray_roi, 50, 150)
         edge_density = np.sum(edges > 0) / max(1, (roi.shape[0] * roi.shape[1]))
         
-        if np.mean(std_color) > 15 or edge_density > 0.14:
+        if np.mean(std_color) > 30 or edge_density > 0.25:
             return "Embroidery"
         
         # 4. Broken Thread Detection (Sharp edges, high local contrast)

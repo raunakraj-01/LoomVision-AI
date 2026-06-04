@@ -306,10 +306,11 @@ class DynamicPatchCore:
 
         # ── Decision ──
         has_defect = max_score > threshold
+        
+        # ALWAYS pack the score and threshold so the PredictionEngine can do custom thresholding
+        defect_info = f"Deep Anomaly (score: {max_score:.3f}, thr: {threshold:.3f})"
 
         if has_defect:
-            defect_info = f"Deep Anomaly (score: {max_score:.3f}, thr: {threshold:.3f})"
-
             # ── Draw bounding box around worst region ──
             worst_idx = int(np.argmax(anomaly_scores))
             gy = worst_idx // self._grid_w
@@ -345,7 +346,6 @@ class DynamicPatchCore:
                 2,
             )
         else:
-            defect_info = None
 
             # ── Update memory bank with this clean frame ──
             # Only learn from stopped-belt frames to keep the memory bank
