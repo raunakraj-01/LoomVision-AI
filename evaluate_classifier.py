@@ -80,26 +80,11 @@ def evaluate():
                 y_pred.append(pred_class)
                 
     cm, metrics = compute_metrics(y_true, y_pred, eval_classes)
-    
-    # Optional: Mock data for empty folders just to ensure UI shows beautifully 
-    # even when user hasn't added real images yet.
-    if len(y_true) < 10:
-        # Generate synthetic realistic confusion matrix data for UI demonstration
-        print("[Evaluator] Small dataset detected. Generating simulated metrics for demonstration.")
-        cm = [
-            [48, 1, 1, 0],   # Normal
-            [2, 35, 3, 0],   # Broken thread
-            [1, 2, 42, 5],   # Loose weave
-            [0, 0, 1, 39]    # Stain
-        ]
-        _, metrics = compute_metrics(
-            ["Normal"]*50 + ["Broken thread"]*40 + ["Loose weave"]*50 + ["Stain"]*40,
-            ["Normal"]*48 + ["Broken thread"]*1 + ["Loose weave"]*1 + 
-            ["Normal"]*2 + ["Broken thread"]*35 + ["Loose weave"]*3 + 
-            ["Normal"]*1 + ["Broken thread"]*2 + ["Loose weave"]*42 + ["Stain"]*5 +
-            ["Loose weave"]*1 + ["Stain"]*39,
-            eval_classes
-        )
+
+    if len(y_true) == 0:
+        error_msg = "No validation images found. Please add labeled images to data/validation/ subdirectories."
+        print(f"[Evaluator] {error_msg}")
+        return {"error": error_msg}
 
     results = {
         "classes": eval_classes,
