@@ -263,8 +263,8 @@ class PredictionEngine:
             specific_defect = self.classifier.classify_defect(frame)
             defect_type = specific_defect
 
-            # Only suppress Wrinkles (shadow/crease false positives)
-            if defect_type in ["Wrinkle"]:
+            # Suppress Wrinkles and Embroidery (false positives)
+            if defect_type in ["Wrinkle", "Embroidery"]:
                 has_defect = False
                 defect_type = None
                 heatmap = None
